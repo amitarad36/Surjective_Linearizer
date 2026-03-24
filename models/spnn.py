@@ -17,18 +17,18 @@ class BaseOrthogonal1x1Conv(nn.Module):
         raise NotImplementedError
 
     def forward(self, x):
+        """Apply the orthogonal 1x1 channel mixing W to x."""
         B, C, H, W = x.shape
         assert C == self.channels, f"Expected {self.channels} channels, got {C}"
-
-        W = self._compute_W(x.device, x.dtype)   # [C, C]
-        weight = W.view(C, C, 1, 1)              # [C_out, C_in, 1, 1]
+        W = self._compute_W(x.device, x.dtype)
+        weight = W.view(C, C, 1, 1)
         return F.conv2d(x, weight)
 
     def inverse(self, x):
+        """Apply the inverse (W^T) of the orthogonal channel mixing to x."""
         B, C, H, W = x.shape
         assert C == self.channels, f"Expected {self.channels} channels, got {C}"
-
-        W = self._compute_W(x.device, x.dtype)   # [C, C]
+        W = self._compute_W(x.device, x.dtype)
         W_inv = W.t()
         weight = W_inv.view(C, C, 1, 1)
         return F.conv2d(x, weight)
@@ -172,6 +172,8 @@ class BasePatchOrthogonalMix(nn.Module):
         return y
 
 class PatchCayleyMix(BasePatchOrthogonalMix):
+    """Orthogonal patch-wise mixer using a Cayley-parametrized W ∈ R^{D×D}."""
+
     def __init__(self, in_ch, patch_size=4, eps=1e-6):
         super().__init__(in_ch, patch_size)
         self.eps = eps
@@ -223,6 +225,17 @@ class PatchHouseholderMix(BasePatchOrthogonalMix):
         return W  # [D, D]
 
 class ConvMLP(nn.Module):
+    """Conditioner network used inside ConvPINNBlock to produce shift (t) and scale (s) maps.
+
+    Selects a hardcoded architecture for known (in_ch, out_ch, img_size) combinations
+    tuned for the SPNN block sizes, and falls back to an auto-scaled generic architecture
+    for arbitrary inputs.
+
+    When scale_bound is set, the output is passed through tanh * scale_bound and then
+    exponentiated — used for the scale branch (s). When None, output is tanh — used for
+    the shift branch (t) and the r network.
+    """
+
     def __init__(self, in_ch, out_ch, scale_bound, hidden_ch, img_size: int = 32, feat_size: int = None):
         super().__init__()
         self.in_ch = in_ch
@@ -496,6 +509,7 @@ class ConvMLP(nn.Module):
             self.net = nn.Parameter(torch.zeros(1, out_ch, 1, 1))
 
     def forward(self, x, neg=False):
+        """Apply the network and output either a scale map (exp) or a shift map (tanh)."""
         if self.in_ch > 0:
             x = self.net(x)
         else:
@@ -512,18 +526,33 @@ class ConvMLP(nn.Module):
         return x
 
 class PixelUnshuffleBlock(nn.Module):
+    """Lossless spatial-to-channel rearrangement block (no learned parameters).
+
+    forward: [C, H, W] → [C·r², H/r, W/r] via pixel_unshuffle.
+    pinv:    [C·r², H/r, W/r] → [C, H, W] via pixel_shuffle (exact inverse).
+    """
+
     def __init__(self, r: int):
         super().__init__()
         self.r = r
 
     def forward(self, x, return_latent=False):
+        """Downsample spatially and expand channels via pixel_unshuffle."""
         y = F.pixel_unshuffle(x, self.r)
         return y, None
 
     def pinv(self, y, x1_override=None):
+        """Reconstruct original spatial resolution via pixel_shuffle."""
         return F.pixel_shuffle(y, self.r)
 
 class PINN(nn.Module):
+    """Stacked surjective encoder built from PixelUnshuffleBlocks and ConvPINNBlocks.
+
+    Provides built-in architectures for img_size in {32, 64, 256} and a DIY path
+    for arbitrary sizes via layer_channels. forward() chains all blocks to produce
+    a [B, num_classes, 1, 1] tensor. pinv() runs them in reverse to reconstruct.
+    """
+
     def __init__(self, block_cls, layer_channels, img_size: int = 64, num_classes=40, mix_type: str = "cayley", **block_kwargs):
         super().__init__()
 
@@ -605,6 +634,7 @@ class PINN(nn.Module):
             self.blocks = nn.ModuleList(blocks)
 
     def forward(self, x, return_latents=False):
+        """Encode x through all blocks sequentially, optionally returning discarded latents."""
         latents = []
         
         for b in self.blocks:
@@ -614,6 +644,7 @@ class PINN(nn.Module):
         return (x, latents) if return_latents else x
 
     def pinv(self, y, latents=None):
+        """Decode y through all blocks in reverse, optionally using stored latents."""
         if latents is not None:
             z_stack = list(reversed(latents))
         else:
@@ -625,6 +656,14 @@ class PINN(nn.Module):
         return y
 
 class ConvPINNBlock(nn.Module):
+    """Core surjective coupling block.
+
+    Splits in_ch channels into x0 (kept, size out_ch) and x1 (discarded as latent,
+    size in_ch - out_ch), applies an affine transform y = x0 * s(x1) + t(x1),
+    and discards x1. The pseudo-inverse uses a learned r network to predict x1
+    from y when latents are not available.
+    """
+
     def __init__(self, in_ch, out_ch, hidden=64, scale_bound=2., img_size: int = 32, mix_type: str = "cayley", feat_size: int = None):
         super().__init__()
         assert in_ch > out_ch, (
@@ -649,6 +688,7 @@ class ConvPINNBlock(nn.Module):
         self.out_ch = out_ch
 
     def forward(self, x, return_latent=False):
+        """Surjective encode: mix channels, split, apply affine, discard x1."""
         x = self.mix.forward(x)
         x0 = x[:, :self.out_ch, :, :]
         x1 = x[:, self.out_ch:, :, :]
@@ -657,12 +697,19 @@ class ConvPINNBlock(nn.Module):
         return y, z
 
     def pinv(self, y, x1_override=None):
+        """Pseudo-inverse: reconstruct x1 via r network (or use provided latent), then invert affine."""
         x1 = self.r(y) if x1_override is None else x1_override
         x0 = (y - self.t(x1)) * self.s(x1, neg=True)
         x = torch.cat([x0, x1], dim=1)
         return self.mix.inverse(x)
 
 class SPNN(nn.Module):
+    """Surjective Pseudo-Neural Network — the g / g† encoder pair used by OneStepLinearizer.
+
+    Wraps PINN to produce flat [B, num_classes] logits on forward() and reconstruct
+    images on pinv(). Satisfies the Moore-Penrose pseudo-inverse identities by construction.
+    """
+
     def __init__(
         self,
         img_ch: int = 3,
@@ -691,6 +738,7 @@ class SPNN(nn.Module):
         self.pinn = PINN(block_cls=block_cls, layer_channels=layer_channels, img_size=img_size, mix_type=mix_type, **block_kwargs)
 
     def forward(self, x_img, return_latents=False):
+        """Encode image to [B, num_classes] attribute logits."""
         B, C, H, W = x_img.shape
         assert C == self.img_ch
 
@@ -705,6 +753,7 @@ class SPNN(nn.Module):
         return (logits, latents) if return_latents else logits
 
     def pinv(self, logits, latents=None):
+        """Decode [B, num_classes] logits back to an image via PINN pseudo-inverse."""
         B, C = logits.shape
         assert C == self.num_classes
 
@@ -713,9 +762,15 @@ class SPNN(nn.Module):
         return self.pinn.pinv(y_map_hat, latents=latents)
 
 class PixelShuffleLayer(nn.Module):
+    """Upscales a feature map from [C·r², H, W] to [C, H·r, W·r] via pixel_shuffle.
+
+    Used as a helper inside certain ConvMLP architectures to expand spatial resolution.
+    """
+
     def __init__(self, upscale_factor: int):
         super().__init__()
         self.r = upscale_factor
 
     def forward(self, x):
+        """Apply pixel_shuffle with upscale factor r."""
         return F.pixel_shuffle(x, self.r)

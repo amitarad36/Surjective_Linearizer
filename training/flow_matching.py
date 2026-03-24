@@ -7,6 +7,15 @@ from linearizer.one_step import OneStepLinearizer
 
 
 class FlowMatcher(nn.Module):
+    """Wraps OneStepLinearizer for Conditional Flow Matching training and sampling.
+
+    Training: learns A(t) to predict the target latent g_x1 from any interpolated
+    point g_xt on the straight-line path between g_x0 (noise) and g_x1 (data).
+
+    Sampling: integrates the ODE in latent space using Euler or RK4, then decodes.
+    One-step sampling: collapses the full ODE into a single precomputed matrix B.
+    """
+
     def __init__(self, linearizer: OneStepLinearizer, latent_size):
         super().__init__()
         self.linearizer = linearizer
@@ -14,9 +23,16 @@ class FlowMatcher(nn.Module):
         self.lpips = LPIPS(replace_pooling=True, reduction="none")
 
     def forward(self, x1, x0=None, noise_level=0.0):
+        """Compute training loss for a batch of real images x1."""
         return self.training_losses(x1, x0, noise_level)
 
     def training_losses(self, x1, x0=None, noise_level=0.0):
+        """Compute the full flow matching loss.
+
+        Encodes x0 (noise) and x1 (data) into latent space, interpolates a random
+        point g_xt along the straight-line path, predicts g_x1 via A(t), and
+        combines MSE in latent space with LPIPS reconstruction losses.
+        """
         batch_size = x1.shape[0]
         device = x1.device
 
@@ -52,6 +68,11 @@ class FlowMatcher(nn.Module):
         return loss
 
     def sample(self, x, device, steps=100, method='euler', return_path=False):
+        """Generate images by integrating the flow ODE in latent space.
+
+        Encodes noise x via gy, integrates using Euler or RK4 for the given
+        number of steps, then decodes the final latent via gx_inverse.
+        """
         self.linearizer.eval()
         with torch.no_grad():
             g_x = self.linearizer.gy(x)
@@ -102,6 +123,11 @@ class FlowMatcher(nn.Module):
         return g_x
 
     def sample_one_step(self, x, device, sampling_method='rk', T=100, B=None):
+        """Generate images in a single matrix multiplication using precomputed B.
+
+        Encodes noise x, applies the precomputed composed matrix B (which
+        represents the full T-step ODE in one shot), and decodes the result.
+        """
         self.linearizer.eval()
         with torch.no_grad():
             g_x = self.linearizer.gy(x)
@@ -113,6 +139,11 @@ class FlowMatcher(nn.Module):
         return g_x
 
     def get_sampling_terms(self, device, T=100, sampling_method='euler'):
+        """Precompute the combined matrix B = M_{T-1} @ ... @ M_0.
+
+        B collapses T Euler or RK4 steps into a single matrix, enabling
+        one-step inference. Computed once offline before sampling.
+        """
         with torch.no_grad():
             I = torch.eye(self.latent_size).to(device)
             B = I
@@ -149,6 +180,12 @@ class FlowMatcher(nn.Module):
 def train_flow_matching(linearizer, dataloader, epochs=10, lr=1e-4, noise_level=0.0,
                         eval_epoch=10, steps=100, num_of_ch=1, sampling_method='rk',
                         save_folder='', img_size=32, latent_size=10):
+    """Run the full flow matching training loop.
+
+    Wraps the linearizer in a FlowMatcher, sets up Adam optimizer and multi-GPU
+    DataParallel if available, then trains for the given number of epochs.
+    Saves model checkpoints and generated sample grids every eval_epoch epochs.
+    """
     import os
     from utils.sampling_utils import sample_and_save
 

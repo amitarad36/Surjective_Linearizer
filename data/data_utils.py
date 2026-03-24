@@ -6,6 +6,7 @@ import numpy as np
 
 
 def get_mnist_data_loaders(train_bs, val_bs, target_size, use_ddp=False, world_size=1, rank=0):
+    """Return train and val DataLoaders for MNIST, resized to target_size."""
     train_transform = transforms.Compose([
         transforms.Resize(target_size),
         transforms.ToTensor(),
@@ -31,6 +32,7 @@ def get_mnist_data_loaders(train_bs, val_bs, target_size, use_ddp=False, world_s
 
 
 def get_celeba_data_loaders(train_bs, val_bs, target_size, use_ddp=False, world_size=1, rank=0):
+    """Return train and val DataLoaders for CelebA, resized and center-cropped to target_size."""
     train_transform = transforms.Compose([
         transforms.Resize(target_size),
         transforms.CenterCrop(target_size),
@@ -58,6 +60,7 @@ def get_celeba_data_loaders(train_bs, val_bs, target_size, use_ddp=False, world_
 
 
 def get_data_loaders(dataset_name, train_bs, val_bs, target_size=32, use_ddp=False, world_size=1, rank=0):
+    """Route to the correct dataset loader by name ('mnist' or 'celeba')."""
     dataset_name = dataset_name.lower()
     if dataset_name == 'mnist':
         return get_mnist_data_loaders(train_bs, val_bs, target_size, use_ddp, world_size, rank)

@@ -11,6 +11,7 @@ from training.flow_matching import train_flow_matching
 
 
 def main():
+    """Parse args, build models, and launch flow matching training on CelebA."""
     parser = get_celeba_parser()
     args = parser.parse_args()
     print(f"Arguments: {args}")

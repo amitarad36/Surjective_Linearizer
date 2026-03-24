@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 
 def sample_and_save(fm, num_of_images, device, epoch, save_dir, num_of_ch, steps=100, sampling_method='rk',
                     img_size=32):
+    """Generate images using both one-step and multi-step sampling and save as PNG grids."""
     x = torch.randn((num_of_images, num_of_ch, img_size, img_size), device=device)
 
     # One step samples

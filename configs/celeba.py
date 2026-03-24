@@ -19,6 +19,7 @@ CELEBA_CONFIG = {
 
 
 def get_celeba_parser():
+    """Build and return the argparse parser for CelebA flow matching training."""
     parser = argparse.ArgumentParser(description='CelebA Flow Matching Training')
 
     parser.add_argument('--dataset',         type=str,   default=CELEBA_CONFIG['dataset'])
