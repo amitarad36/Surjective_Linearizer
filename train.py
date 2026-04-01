@@ -1,7 +1,6 @@
 import os
 import json
 import sys
-from datetime import datetime
 
 from configs.celeba import get_celeba_parser
 from data.data_utils import get_data_loaders
@@ -22,14 +21,15 @@ def main():
     print(f"Loaded dataset: {args.dataset}")
 
     # --- models --- #
-    g1 = get_g(img_ch=args.in_ch, img_size=args.img_size, latent_size=args.latent_size)
-    g2 = get_g(img_ch=args.in_ch, img_size=args.img_size, latent_size=args.latent_size)
+    # Single shared g: noise and data are assumed to live in the same space,
+    # so one encoder warps both distributions into the linear latent space.
+    g = get_g(img_ch=args.in_ch, img_size=args.img_size, latent_size=args.latent_size)
     linear_network = get_linear_network(latent_size=args.latent_size, lora_rank=args.lora_rank)
-    linearizer = OneStepLinearizer(gx=g1, gy=g2, linear_network=linear_network)
+    linearizer = OneStepLinearizer(gx=g, gy=None, linear_network=linear_network)
 
     # --- output folder --- #
-    save_folder = os.path.join(args.save_folder, args.dataset,
-                               datetime.now().strftime("%m_%d_%H_%M_%S"))
+    # Fixed name so checkpoint survives resubmission across 24h job limits
+    save_folder = os.path.join(args.save_folder, args.dataset)
     os.makedirs(save_folder, exist_ok=True)
     with open(os.path.join(save_folder, 'args.json'), 'w') as f:
         json.dump(vars(args), f, indent=2)

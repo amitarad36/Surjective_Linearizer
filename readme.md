@@ -1,6 +1,6 @@
 # Surjective Linearizer
 
-> Extending the Linearizer framework with a surjective encoder — replacing the invertible `gₓ` with the surjective classifier `g`, and `gᵧ` with the pseudo-inverse `g†` from SPNN.
+> Extending the Linearizer framework with a surjective encoder — replacing the invertible `g` with a surjective classifier that assumes a pseudo-inverse `g†`.
 
 ---
 

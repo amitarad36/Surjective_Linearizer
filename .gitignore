@@ -1,0 +1,22 @@
+# CelebA dataset
+img_align_celeba.zip
+
+# Training outputs
+outputs/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+dist/
+build/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Env
+.env
+*.env

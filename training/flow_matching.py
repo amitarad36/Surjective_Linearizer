@@ -41,7 +41,8 @@ class FlowMatcher(nn.Module):
         t = torch.rand(batch_size, device=device)
 
         # --- project into induced space --- #
-        g_x0 = self.linearizer.gy(x0)
+        # Single shared g: both noise and data are encoded through gx.
+        g_x0 = self.linearizer.gx(x0)
         g_x1 = self.linearizer.gx(x1)
 
         # --- predict in the induced space --- #
@@ -56,7 +57,7 @@ class FlowMatcher(nn.Module):
         g_x1 = g_x1 + torch.randn_like(g_x1) * noise_level
 
         # reconstruction losses
-        x0_tag = self.linearizer.gy_inverse(g_x0)
+        x0_tag = self.linearizer.gx_inverse(g_x0)
         x0_rec_loss = ((x0 - x0_tag) ** 2).mean()
         x1_tag = self.linearizer.gx_inverse(g_x1)
         x1_rec_loss = self.lpips(x1, self.linearizer.gx_inverse(g_x1)).mean()
@@ -70,12 +71,12 @@ class FlowMatcher(nn.Module):
     def sample(self, x, device, steps=100, method='euler', return_path=False):
         """Generate images by integrating the flow ODE in latent space.
 
-        Encodes noise x via gy, integrates using Euler or RK4 for the given
+        Encodes noise x via gx, integrates using Euler or RK4 for the given
         number of steps, then decodes the final latent via gx_inverse.
         """
         self.linearizer.eval()
         with torch.no_grad():
-            g_x = self.linearizer.gy(x)
+            g_x = self.linearizer.gx(x)
             dt = 1.0 / steps
 
             if return_path:
@@ -130,7 +131,7 @@ class FlowMatcher(nn.Module):
         """
         self.linearizer.eval()
         with torch.no_grad():
-            g_x = self.linearizer.gy(x)
+            g_x = self.linearizer.gx(x)
             if B is None:
                 B = self.get_sampling_terms(device, sampling_method=sampling_method, T=T)
             B = B.to(device)
@@ -185,6 +186,7 @@ def train_flow_matching(linearizer, dataloader, epochs=10, lr=1e-4, noise_level=
     Wraps the linearizer in a FlowMatcher, sets up Adam optimizer and multi-GPU
     DataParallel if available, then trains for the given number of epochs.
     Saves model checkpoints and generated sample grids every eval_epoch epochs.
+    Resumes automatically from the latest checkpoint if one exists.
     """
     import os
     from utils.sampling_utils import sample_and_save
@@ -208,7 +210,18 @@ def train_flow_matching(linearizer, dataloader, epochs=10, lr=1e-4, noise_level=
     os.makedirs(models_save_path, exist_ok=True)
     os.makedirs(artifacts_save_path, exist_ok=True)
 
-    for epoch in range(epochs):
+    # --- resume from checkpoint if available --- #
+    start_epoch = 0
+    ckpt_path = f'{models_save_path}/checkpoint.pth'
+    if os.path.exists(ckpt_path):
+        ckpt = torch.load(ckpt_path, map_location=device)
+        fm_eval = fm.module if isinstance(fm, torch.nn.DataParallel) else fm
+        fm_eval.linearizer.load_state_dict(ckpt['linearizer'])
+        optimizer.load_state_dict(ckpt['optimizer'])
+        start_epoch = ckpt['epoch'] + 1
+        print(f"Resumed from checkpoint at epoch {ckpt['epoch']}")
+
+    for epoch in range(start_epoch, epochs):
         total_loss = 0
         fm.train()
         for batch_idx, (x1, _) in enumerate(dataloader):
@@ -225,9 +238,13 @@ def train_flow_matching(linearizer, dataloader, epochs=10, lr=1e-4, noise_level=
         avg_loss = total_loss / len(dataloader)
         print(f'Epoch {epoch + 1}/{epochs} completed, Avg Loss: {avg_loss:.4f}')
 
+        # save checkpoint every epoch for resume support
+        fm_eval = fm.module if isinstance(fm, torch.nn.DataParallel) else fm
+        torch.save({'epoch': epoch, 'linearizer': fm_eval.linearizer.state_dict(),
+                    'optimizer': optimizer.state_dict()}, ckpt_path)
+
         if epoch % eval_epoch == 0:
             fm.eval()
-            fm_eval = fm.module if isinstance(fm, torch.nn.DataParallel) else fm
             torch.save(fm_eval.linearizer, f'{models_save_path}/lin_{epoch}.pth')
             print(f"Model saved to {models_save_path}/lin_{epoch}.pth")
             sample_and_save(fm=fm_eval, num_of_images=16, device=device, steps=steps,
