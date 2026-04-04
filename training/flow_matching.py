@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import wandb
 
 from piq import LPIPS
 
@@ -65,7 +66,7 @@ class FlowMatcher(nn.Module):
         loss_r_x0_tag = x0_tag.pow(2).mean()
         loss_r_x1_tag = x1_tag.pow(2).mean()
 
-        loss = induced_space_loss + x0_rec_loss + x1_rec_loss + x1_pred_rec_loss + loss_r_x0_tag + loss_r_x1_tag
+        loss = induced_space_loss + x0_rec_loss + x1_rec_loss + x1_pred_rec_loss + loss_r_x0_tag
         return loss
 
     def sample(self, x, device, steps=100, method='euler', return_path=False):
@@ -234,9 +235,11 @@ def train_flow_matching(linearizer, dataloader, epochs=10, lr=1e-4, noise_level=
             total_loss += loss.item()
             if batch_idx % 100 == 0:
                 print(f'Epoch {epoch + 1}/{epochs}, Batch {batch_idx}, Loss: {loss.item():.4f}')
+                wandb.log({'batch_loss': loss.item(), 'epoch': epoch + 1})
 
         avg_loss = total_loss / len(dataloader)
         print(f'Epoch {epoch + 1}/{epochs} completed, Avg Loss: {avg_loss:.4f}')
+        wandb.log({'avg_loss': avg_loss, 'epoch': epoch + 1})
 
         # save checkpoint every epoch for resume support
         fm_eval = fm.module if isinstance(fm, torch.nn.DataParallel) else fm
@@ -250,3 +253,8 @@ def train_flow_matching(linearizer, dataloader, epochs=10, lr=1e-4, noise_level=
             sample_and_save(fm=fm_eval, num_of_images=16, device=device, steps=steps,
                             epoch=epoch, num_of_ch=num_of_ch, sampling_method=sampling_method,
                             img_size=img_size, save_dir=artifacts_save_path)
+            wandb.log({
+                'samples_one': wandb.Image(f'{artifacts_save_path}/one_{epoch}.png'),
+                'samples_multi': wandb.Image(f'{artifacts_save_path}/multi_{epoch}.png'),
+                'epoch': epoch + 1,
+            })

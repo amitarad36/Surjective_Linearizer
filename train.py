@@ -2,6 +2,8 @@ import os
 import json
 import sys
 
+import wandb
+
 from configs.celeba import get_celeba_parser
 from data.data_utils import get_data_loaders
 from linearizer.one_step import OneStepLinearizer
@@ -14,6 +16,13 @@ def main():
     parser = get_celeba_parser()
     args = parser.parse_args()
     print(f"Arguments: {args}")
+
+    # --- wandb --- #
+    wandb.init(
+        project="surjective-linearizer",
+        name=args.exp_name,
+        config=vars(args),
+    )
 
     # --- data --- #
     dataloader, _ = get_data_loaders(args.dataset, args.batch_size, args.batch_size_val,
@@ -28,8 +37,8 @@ def main():
     linearizer = OneStepLinearizer(gx=g, gy=None, linear_network=linear_network)
 
     # --- output folder --- #
-    # Fixed name so checkpoint survives resubmission across 24h job limits
-    save_folder = os.path.join(args.save_folder, args.dataset)
+    # Use exp_name so each experiment has its own checkpoint dir
+    save_folder = os.path.join(args.save_folder, args.exp_name)
     os.makedirs(save_folder, exist_ok=True)
     with open(os.path.join(save_folder, 'args.json'), 'w') as f:
         json.dump(vars(args), f, indent=2)
@@ -50,6 +59,7 @@ def main():
         num_of_ch=args.in_ch,
         latent_size=args.latent_size,
     )
+    wandb.finish()
     print("Training completed!")
 
 

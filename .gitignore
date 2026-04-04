@@ -3,6 +3,7 @@ img_align_celeba.zip
 
 # Training outputs
 outputs/
+*.png
 
 # Python
 __pycache__/

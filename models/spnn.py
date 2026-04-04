@@ -735,7 +735,7 @@ class SPNN(nn.Module):
         self.scale_bound = scale_bound
         self.img_size = img_size
 
-        self.pinn = PINN(block_cls=block_cls, layer_channels=layer_channels, img_size=img_size, mix_type=mix_type, **block_kwargs)
+        self.pinn = PINN(block_cls=block_cls, layer_channels=layer_channels, img_size=img_size, num_classes=num_classes, mix_type=mix_type, **block_kwargs)
 
     def forward(self, x_img, return_latents=False):
         """Encode image to [B, num_classes] attribute logits."""
