@@ -58,6 +58,7 @@ def main():
         img_size=args.img_size,
         num_of_ch=args.in_ch,
         latent_size=args.latent_size,
+        var_match_lambda=args.var_match_lambda,
     )
     wandb.finish()
     print("Training completed!")

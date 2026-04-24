@@ -10,12 +10,13 @@ CELEBA_CONFIG = {
     'batch_size_val': 128,
     'epochs': 201,
     'lr': 1e-4,
-    'noise_level': 0.0,
+    'noise_level': 0.1,
     'steps': 100,
     'sampling_method': 'rk',
     'eval_epoch': 10,
     'save_folder': './outputs',
     'exp_name': 'baseline',
+    'var_match_lambda': 0.0,
 }
 
 
@@ -37,7 +38,8 @@ def get_celeba_parser():
     parser.add_argument('--sampling_method', type=str,   default=CELEBA_CONFIG['sampling_method'],
                         choices=['euler', 'rk'])
     parser.add_argument('--eval_epoch',      type=int,   default=CELEBA_CONFIG['eval_epoch'])
-    parser.add_argument('--save_folder',     type=str,   default=CELEBA_CONFIG['save_folder'])
-    parser.add_argument('--exp_name',        type=str,   default=CELEBA_CONFIG['exp_name'])
+    parser.add_argument('--save_folder',       type=str,   default=CELEBA_CONFIG['save_folder'])
+    parser.add_argument('--exp_name',          type=str,   default=CELEBA_CONFIG['exp_name'])
+    parser.add_argument('--var_match_lambda',  type=float, default=CELEBA_CONFIG['var_match_lambda'])
 
     return parser

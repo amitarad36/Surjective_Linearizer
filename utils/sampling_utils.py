@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 
 
 def sample_and_save(fm, num_of_images, device, epoch, save_dir, num_of_ch, steps=100, sampling_method='rk',
-                    img_size=32):
+                    img_size=32, fixed_noise=None):
     """Generate images using both one-step and multi-step sampling and save as PNG grids."""
-    x = torch.randn((num_of_images, num_of_ch, img_size, img_size), device=device)
+    x = fixed_noise if fixed_noise is not None else torch.randn((num_of_images, num_of_ch, img_size, img_size), device=device)
 
     # One step samples
     samples_one_step = fm.sample_one_step(x, device, sampling_method=sampling_method, T=steps)
@@ -18,6 +18,8 @@ def sample_and_save(fm, num_of_images, device, epoch, save_dir, num_of_ch, steps
 
 def save_one_step_sample(k, path, name, samples_one_step):
     """Save generated samples as images"""
+    import os
+    os.makedirs(path, exist_ok=True)
     is_rgb = samples_one_step.shape[1] == 3
     samples_one_step = torch.clamp(samples_one_step, 0, 1)
     cmap = None if is_rgb else 'gray'

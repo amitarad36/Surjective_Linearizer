@@ -248,16 +248,10 @@ class ConvMLP(nn.Module):
             # [36,64,64] -> down 32 -> up 64 -> [12,64,64]
             self.net = nn.Sequential(
                 nn.Conv2d(36, 128, 3, padding=1), nn.ReLU(),
-                nn.Conv2d(128, 128, 3, padding=1),
-                # nn.GroupNorm(1, 128),
-                nn.ReLU(),
-
+                nn.Conv2d(128, 128, 3, padding=1), nn.ReLU(),
                 nn.Conv2d(128, 256, 3, stride=2, padding=1), nn.ReLU(),  # 64->32
-                nn.Conv2d(256, 256, 3, padding=1),
-                # nn.GroupNorm(1, 256)
-                nn.ReLU(),
-
-                nn.ConvTranspose2d(256, 128, 4, stride=2, padding=1), nn.ReLU(),  # 32->64
+                nn.Conv2d(256, 256, 3, padding=1), nn.ReLU(),
+                nn.ConvTranspose2d(256, 128, 4, stride=2, padding=1), nn.ReLU(),
                 nn.Conv2d(128, 12, 3, padding=1),
             )
             nn.init.zeros_(self.net[-1].weight)
@@ -266,17 +260,10 @@ class ConvMLP(nn.Module):
         elif self.img_size == 256 and in_ch == 12 and out_ch == 36:
             self.net = nn.Sequential(
                 nn.Conv2d(12, 128, 3, padding=1), nn.ReLU(),
-                nn.Conv2d(128, 128, 3, padding=1),
-                # nn.GroupNorm(1, 128),
-                nn.ReLU(),
-
+                nn.Conv2d(128, 128, 3, padding=1), nn.ReLU(),
                 nn.Conv2d(128, 256, 3, stride=2, padding=1), nn.ReLU(),  # 64->32
-                nn.Conv2d(256, 256, 3, padding=1),
-                # nn.GroupNorm(1, 256),
-                nn.ReLU(),
-
-
-                nn.ConvTranspose2d(256, 128, 4, stride=2, padding=1), nn.ReLU(),  # 32->64
+                nn.Conv2d(256, 256, 3, padding=1), nn.ReLU(),
+                nn.ConvTranspose2d(256, 128, 4, stride=2, padding=1), nn.ReLU(),
                 nn.Conv2d(128, 36, 3, padding=1),
             )
             nn.init.zeros_(self.net[-1].weight)
@@ -284,19 +271,12 @@ class ConvMLP(nn.Module):
 
         # ===== img_size=256: Block2 (16x16) =====
         elif self.img_size == 256 and in_ch == 144 and out_ch == 48:
-            # [144,16,16] -> down 8 -> up 16 -> [48,16,16]
             self.net = nn.Sequential(
                 nn.Conv2d(144, 256, 3, padding=1), nn.ReLU(),
-                nn.Conv2d(256, 256, 3, padding=1),
-                #nn.GroupNorm(1, 256),
-                nn.ReLU(),
-
+                nn.Conv2d(256, 256, 3, padding=1), nn.ReLU(),
                 nn.Conv2d(256, 512, 3, stride=2, padding=1), nn.ReLU(),  # 16->8
-                nn.Conv2d(512, 512, 3, padding=1),
-                #nn.GroupNorm(1, 512),
-                nn.ReLU(),
-
-                nn.ConvTranspose2d(512, 256, 4, stride=2, padding=1), nn.ReLU(),  # 8->16
+                nn.Conv2d(512, 512, 3, padding=1), nn.ReLU(),
+                nn.ConvTranspose2d(512, 256, 4, stride=2, padding=1), nn.ReLU(),
                 nn.Conv2d(256, 48, 3, padding=1),
             )
             nn.init.zeros_(self.net[-1].weight)
@@ -305,16 +285,10 @@ class ConvMLP(nn.Module):
         elif self.img_size == 256 and in_ch == 48 and out_ch == 144:
             self.net = nn.Sequential(
                 nn.Conv2d(48, 256, 3, padding=1), nn.ReLU(),
-                nn.Conv2d(256, 256, 3, padding=1),
-                #nn.GroupNorm(1, 256),
-                nn.ReLU(),
-
+                nn.Conv2d(256, 256, 3, padding=1), nn.ReLU(),
                 nn.Conv2d(256, 512, 3, stride=2, padding=1), nn.ReLU(),  # 16->8
-                nn.Conv2d(512, 512, 3, padding=1),
-                #nn.GroupNorm(1, 512),
-                nn.ReLU(),
-
-                nn.ConvTranspose2d(512, 256, 4, stride=2, padding=1), nn.ReLU(),  # 8->16
+                nn.Conv2d(512, 512, 3, padding=1), nn.ReLU(),
+                nn.ConvTranspose2d(512, 256, 4, stride=2, padding=1), nn.ReLU(),
                 nn.Conv2d(256, 144, 3, padding=1),
             )
             nn.init.zeros_(self.net[-1].weight)
@@ -324,16 +298,10 @@ class ConvMLP(nn.Module):
         elif self.img_size == 256 and in_ch == 576 and out_ch == 192:
             self.net = nn.Sequential(
                 nn.Conv2d(576, 512, 3, padding=1), nn.ReLU(),
-                nn.Conv2d(512, 512, 3, padding=1),
-                #nn.GroupNorm(1, 512),
-                nn.ReLU(),
-
+                nn.Conv2d(512, 512, 3, padding=1), nn.ReLU(),
                 nn.Conv2d(512, 1024, 3, stride=2, padding=1), nn.ReLU(),  # 4->2
-                nn.Conv2d(1024, 1024, 3, padding=1),
-                #nn.GroupNorm(1, 1024),
-                nn.ReLU(),
-
-                nn.ConvTranspose2d(1024, 512, 4, stride=2, padding=1), nn.ReLU(),  # 2->4
+                nn.Conv2d(1024, 1024, 3, padding=1), nn.ReLU(),
+                nn.ConvTranspose2d(1024, 512, 4, stride=2, padding=1), nn.ReLU(),
                 nn.Conv2d(512, 192, 3, padding=1),
             )
             nn.init.zeros_(self.net[-1].weight)
@@ -342,16 +310,10 @@ class ConvMLP(nn.Module):
         elif self.img_size == 256 and in_ch == 192 and out_ch == 576:
             self.net = nn.Sequential(
                 nn.Conv2d(192, 512, 3, padding=1), nn.ReLU(),
-                nn.Conv2d(512, 512, 3, padding=1),
-                #nn.GroupNorm(1, 512),
-                nn.ReLU(),
-
+                nn.Conv2d(512, 512, 3, padding=1), nn.ReLU(),
                 nn.Conv2d(512, 1024, 3, stride=2, padding=1), nn.ReLU(),  # 4->2
-                nn.Conv2d(1024, 1024, 3, padding=1),
-                #nn.GroupNorm(1, 1024),
-                nn.ReLU(),
-
-                nn.ConvTranspose2d(1024, 512, 4, stride=2, padding=1), nn.ReLU(),  # 2->4
+                nn.Conv2d(1024, 1024, 3, padding=1), nn.ReLU(),
+                nn.ConvTranspose2d(1024, 512, 4, stride=2, padding=1), nn.ReLU(),
                 nn.Conv2d(512, 576, 3, padding=1),
             )
             nn.init.zeros_(self.net[-1].weight)
@@ -395,9 +357,9 @@ class ConvMLP(nn.Module):
             # [6,32,32] -> down 16 -> up 32 -> [6,32,32]
             self.net = nn.Sequential(
                 nn.Conv2d(6, 64, 3, padding=1), nn.ReLU(),
-                nn.Conv2d(64, 128, 3, stride=2, padding=1), nn.ReLU(),          # 32->16
+                nn.Conv2d(64, 128, 3, stride=2, padding=1), nn.ReLU(),
                 nn.Conv2d(128, 128, 3, padding=1), nn.ReLU(),
-                nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1), nn.ReLU(), # 16->32
+                nn.ConvTranspose2d(128, 64, 4, stride=2, padding=1), nn.ReLU(),
                 nn.Conv2d(64, 6, 3, padding=1),
             )
             nn.init.zeros_(self.net[-1].weight)
@@ -475,7 +437,6 @@ class ConvMLP(nn.Module):
                     f"feat_size must be even when using the stride-2 path (got feat_size={feat_size}). "
                     f"ConvTranspose2d(kernel=4, stride=2, pad=1) restores H→H only for even H."
                 )
-                # Mirror the tailored cases: 2 convs → stride-2 down → conv → upsample → out
                 self.net = nn.Sequential(
                     nn.Conv2d(in_ch, h1, 3, padding=1), nn.ReLU(),
                     nn.Conv2d(h1, h1, 3, padding=1), nn.ReLU(),
@@ -555,7 +516,6 @@ class PINN(nn.Module):
 
     def __init__(self, block_cls, layer_channels, img_size: int = 64, num_classes=40, mix_type: str = "cayley", **block_kwargs):
         super().__init__()
-
         if img_size == 64:
             self.blocks = nn.ModuleList([
                 PixelUnshuffleBlock(2),              # [3,64,64] -> [12,32,32]
