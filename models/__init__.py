@@ -1,1 +1,1 @@
-from .spnn import SPNN, PINN, ConvPINNBlock, PixelUnshuffleBlock
+from .spnn1 import SPNN, PINN, ConvPINNBlock, PixelUnshuffleBlock
