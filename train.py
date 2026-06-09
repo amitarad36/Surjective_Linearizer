@@ -2,6 +2,7 @@ import os
 import json
 import sys
 
+import torch
 import wandb
 
 from configs.celeba import get_celeba_parser
@@ -36,6 +37,10 @@ def main():
     linear_network = get_linear_network(latent_size=args.latent_size, lora_rank=args.lora_rank)
     linearizer = OneStepLinearizer(gx=g, gy=None, linear_network=linear_network)
 
+    if args.resume:
+        print(f"Resuming from checkpoint: {args.resume}")
+        linearizer.load_state_dict(torch.load(args.resume, map_location='cpu'))
+
     # --- output folder --- #
     # Use exp_name so each experiment has its own checkpoint dir
     save_folder = os.path.join(args.save_folder, args.exp_name)
@@ -59,6 +64,7 @@ def main():
         num_of_ch=args.in_ch,
         latent_size=args.latent_size,
         var_match_lambda=args.var_match_lambda,
+        start_epoch=args.start_epoch,
     )
     wandb.finish()
     print("Training completed!")

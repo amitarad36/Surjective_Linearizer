@@ -8,7 +8,7 @@
 #SBATCH --time=72:00:00
 #SBATCH -o logs/%x_%j.out
 #SBATCH -e logs/%x_%j.err
-#SBATCH --job-name=flat_ind_v3
+#SBATCH --job-name=flat_ind_v3_final
 
 set -euo pipefail
 mkdir -p logs
@@ -17,13 +17,15 @@ cd /rg/shocher_prj/amit.arad/Surjective_Linearizer
 source venv/bin/activate
 
 python -u train.py \
-    --epochs 201 \
+    --epochs 200 \
     --batch_size 64 \
     --steps 100 \
-    --eval_epoch 10 \
+    --eval_epoch 1 \
     --sampling_method rk \
     --latent_size 128 \
     --lora_rank 8 \
     --noise_level 0.1 \
     --var_match_lambda 8 \
-    --exp_name flat_induced_v3
+    --exp_name flat_induced_v3 \
+    --resume outputs/flat_induced_v3/checkpoints/linearizer_epoch_100.pt \
+    --start_epoch 100

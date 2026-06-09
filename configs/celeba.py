@@ -41,5 +41,9 @@ def get_celeba_parser():
     parser.add_argument('--save_folder',       type=str,   default=CELEBA_CONFIG['save_folder'])
     parser.add_argument('--exp_name',          type=str,   default=CELEBA_CONFIG['exp_name'])
     parser.add_argument('--var_match_lambda',  type=float, default=CELEBA_CONFIG['var_match_lambda'])
+    parser.add_argument('--resume',            type=str,   default=None,
+                        help='Path to checkpoint to resume from')
+    parser.add_argument('--start_epoch',       type=int,   default=0,
+                        help='Epoch to start from when resuming')
 
     return parser

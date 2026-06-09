@@ -82,10 +82,14 @@ class FlowMatcher(nn.Module):
 
         # reconstruction losses
         x0_tag = self.linearizer.gx_inverse(g_x0)
-        x0_rec_loss = ((x0 - x0_tag) ** 2).mean()
+        x0_rec_loss = ((x0 - x0_tag) ** 2).mean() # consider turning off
         x1_tag = self.linearizer.gx_inverse(g_x1)
-        x1_rec_loss = self.lpips(x1, self.linearizer.gx_inverse(g_x1)).mean()
+        
+        x1_rec_loss = ((x1 - x1_tag) ** 2).mean()
+        # x1_rec_loss = self.lpips(x1, x1_tag).mean() # consider giving weights to LPIPS vs MSE
+        
         x1_pred_rec_loss = self.lpips(x1, self.linearizer.gx_inverse(g_x1_p)).mean()
+        
         # loss_r_x0_tag = x0_tag.pow(2).mean()
         # loss_r_x1_tag = x1_tag.pow(2).mean()
 
@@ -219,7 +223,8 @@ class FlowMatcher(nn.Module):
 
 def train_flow_matching(linearizer, dataloader, epochs=10, lr=1e-4, noise_level=0.0,
                         eval_epoch=10, steps=100, num_of_ch=1, sampling_method='rk',
-                        save_folder='', img_size=32, latent_size=10, var_match_lambda=0.0):
+                        save_folder='', img_size=32, latent_size=10, var_match_lambda=0.0,
+                        start_epoch=0):
     """Run the full flow matching training loop.
 
     Wraps the linearizer in a FlowMatcher, sets up Adam optimizer and multi-GPU
@@ -247,11 +252,13 @@ def train_flow_matching(linearizer, dataloader, epochs=10, lr=1e-4, noise_level=
                                  betas=(0.9, 0.999), weight_decay=0.0)
 
     artifacts_save_path = f'{save_folder}/artifacts'
+    checkpoints_save_path = f'{save_folder}/checkpoints'
     os.makedirs(artifacts_save_path, exist_ok=True)
+    os.makedirs(checkpoints_save_path, exist_ok=True)
 
     fixed_noise = torch.randn(16, num_of_ch, img_size, img_size, device=device)
 
-    for epoch in range(epochs):
+    for epoch in range(start_epoch, epochs):
         total_loss = 0
         fm.train()
         for batch_idx, (x1, _) in enumerate(dataloader):
@@ -282,3 +289,5 @@ def train_flow_matching(linearizer, dataloader, epochs=10, lr=1e-4, noise_level=
                 'samples_multi': wandb.Image(f'{artifacts_save_path}/multi_{epoch}.png'),
                 'epoch': epoch + 1,
             })
+            torch.save(linearizer.state_dict(), f'{checkpoints_save_path}/linearizer_epoch_{epoch}.pt')
+            print(f'Checkpoint saved: linearizer_epoch_{epoch}.pt')
